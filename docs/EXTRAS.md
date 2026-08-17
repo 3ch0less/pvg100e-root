@@ -105,6 +105,10 @@ I did not run it since everything here is already achievable over EDL, but it is
 path if you want officially-open flashing later (e.g. for LineageOS). Note the FDE binding
 caveat in README Step 7 applies: after unlocking, expect to wipe userdata once more.
 
+The fastboot screen itself, on my unit:
+
+![PVG100E fastboot mode: DEVICE STATE locked, secure boot enabled](images/fastboot-mode.jpg)
+
 ## Hidden apps worth opening
 
 ```sh

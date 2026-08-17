@@ -164,6 +164,14 @@ No-adb path (needed after a bad flash, for example): power off, hold power throu
 restart cycles until the one-button menu appears, short-press to highlight **recovery**,
 long-press to select, then choose **Emergency download mode**.
 
+The one-button boot menu (short-press cycles, long-press selects):
+
+![Boot options menu: Power off, Restart, Recovery, Fastboot](docs/images/options-menu.jpg)
+
+And the stock recovery, with the EDL door highlighted:
+
+![Stock recovery menu with Emergency download mode selected](docs/images/recovery-edl.jpg)
+
 Verify the Mac sees it: `system_profiler SPUSBDataType | grep -i qualcomm` should show a
 device, or check for VID `05c6` PID `9008`.
 
@@ -234,6 +242,15 @@ python edl.py reset --loader=pepito_vdf_fh.bin   # prints a USB error, but reset
 
 `w` writes the file at the boot partition's start sector. Writes with this loader work with
 stock edl, no patch needed on that path.
+
+On the first boot after flashing, expect this screen:
+
+!["Your device has loaded a different operating system" warning](docs/images/verified-boot-warning.jpg)
+
+That is the verified-boot notice for the modified boot image. It is informational only: the
+phone continues to Android by itself after a few seconds (or long-press power to skip). You
+will see it on every boot with Magisk. If it bootloops instead of passing through, restore
+the stock boot (see [Restore and unbrick](#restore-and-unbrick)) and re-check Step 5.
 
 ## Step 7: The FDE problem and the fix
 
