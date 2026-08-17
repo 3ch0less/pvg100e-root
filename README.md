@@ -1,8 +1,8 @@
 # Rooting the Palm Phone PVG100E (Pepito) via EDL
 
 A complete, tested guide to permanently rooting the international Palm Phone (PVG100E,
-codename Pepito, Snapdragon 435) using Qualcomm EDL mode and Magisk. No fastboot, no
-Sugar QCT, no sketchy one-click tools. Written after doing it on my own unit, including
+codename Pepito, Snapdragon 435) using Qualcomm EDL mode and Magisk. No fastboot flashes,
+no Sugar QCT, no sketchy one-click tools. Written after doing it on my own unit, including
 every failure I hit so you do not have to.
 
 Works on: PVG100E (Vodafone/international, TCL-built). The US PVG100 is similar but uses a
@@ -47,7 +47,7 @@ not repeat it.
 | SoC | Snapdragon 435 (reports as MSM8940, HWID 0x0006b0e100420046) |
 | RAM / storage | 3 GB / 32 GB eMMC |
 | Stock OS | Android 8.1.0, kernel 3.18.71, last patch 2019-12-05 |
-| Bootloader | Locked, no fastboot on the retail path |
+| Bootloader | Locked. A hidden fastboot mode exists in aboot (observed working: reports itself unlockable; never flash-tested, EDL is what this guide uses) |
 | Low-level access | Qualcomm EDL (USB 05c6:9008) |
 | userdata | FDE encrypted, and this matters a lot, see Step 7 |
 
@@ -85,8 +85,12 @@ not repeat it.
 
 ## Step 0: How this works
 
-The phone has no fastboot, but the Snapdragon boot ROM (PBL) always listens on USB for the
-Sahara protocol when in EDL mode. Sahara accepts one thing: a cryptographically signed
+This model is usually described as having no fastboot. Not quite true: there is a hidden
+fastboot mode inside aboot (boot menu, details in [docs/EXTRAS.md](docs/EXTRAS.md)). I have
+seen it work with my own eyes and it answers the full command vocabulary, but I never
+flashed or unlocked through it, so treat it as an observed bonus, not a tested path. The
+proven low-level door is EDL: the Snapdragon boot ROM (PBL) always listens on USB for the
+Sahara protocol in EDL mode. Sahara accepts one thing: a cryptographically signed
 firehose programmer. TCL signed one for this exact device and it leaked years ago. Once the
 loader runs, it exposes the whole eMMC for raw read/write over the firehose protocol. That
 is the entire trick: signed loader, then read everything, then write one partition.
