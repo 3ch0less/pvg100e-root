@@ -87,6 +87,24 @@ keeps adb alive. Point SCAT or qcsuper at interface 0 over libusb. Runtime only;
 `persist.sys.usb.config` if you want it permanent. The stock DiagProtector activity is
 blank on this build, the setprop path is the working one.
 
+## Hidden fastboot (confirmed on-device)
+
+The PVG100E's aboot has a working fastboot mode, reachable from the one-button boot menu
+(hold power through the restart cycles, short-press to **fastboot**, long-press). Verified
+on my unit:
+
+```
+fastboot devices                      # 8de96889  fastboot
+fastboot oem device-info              # locked, verity enforcing
+fastboot flashing get_unlock_ability  # -> 1 (unlockable!)
+```
+
+So this variant is genuinely OEM-unlockable (matches the neko.ink report: only the E model
+has this). `fastboot oem unlock` would wipe userdata and switch to the orange boot state;
+I did not run it since everything here is already achievable over EDL, but it is the clean
+path if you want officially-open flashing later (e.g. for LineageOS). Note the FDE binding
+caveat in README Step 7 applies: after unlocking, expect to wipe userdata once more.
+
 ## Hidden apps worth opening
 
 ```sh
