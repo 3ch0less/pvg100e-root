@@ -107,7 +107,7 @@ caveat in README Step 7 applies: after unlocking, expect to wipe userdata once m
 
 The fastboot screen itself, on my unit:
 
-![PVG100E fastboot mode: DEVICE STATE locked, secure boot enabled](images/fastboot-mode.jpg)
+<img src="images/fastboot-mode.jpg" width="420" alt="PVG100E fastboot mode: DEVICE STATE locked, secure boot enabled">
 
 ## Hidden apps worth opening
 

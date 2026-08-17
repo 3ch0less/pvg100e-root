@@ -164,13 +164,13 @@ No-adb path (needed after a bad flash, for example): power off, hold power throu
 restart cycles until the one-button menu appears, short-press to highlight **recovery**,
 long-press to select, then choose **Emergency download mode**.
 
-The one-button boot menu (short-press cycles, long-press selects):
+The one-button boot menu (short-press cycles, long-press selects) and the stock recovery
+with the EDL door highlighted:
 
-![Boot options menu: Power off, Restart, Recovery, Fastboot](docs/images/options-menu.jpg)
-
-And the stock recovery, with the EDL door highlighted:
-
-![Stock recovery menu with Emergency download mode selected](docs/images/recovery-edl.jpg)
+<table><tr>
+<td><img src="docs/images/options-menu.jpg" width="380" alt="Boot options menu: Power off, Restart, Recovery, Fastboot"></td>
+<td><img src="docs/images/recovery-edl.jpg" width="380" alt="Stock recovery menu with Emergency download mode selected"></td>
+</tr></table>
 
 Verify the Mac sees it: `system_profiler SPUSBDataType | grep -i qualcomm` should show a
 device, or check for VID `05c6` PID `9008`.
@@ -245,7 +245,7 @@ stock edl, no patch needed on that path.
 
 On the first boot after flashing, expect this screen:
 
-!["Your device has loaded a different operating system" warning](docs/images/verified-boot-warning.jpg)
+<img src="docs/images/verified-boot-warning.jpg" width="420" alt="Your device has loaded a different operating system warning">
 
 That is the verified-boot notice for the modified boot image. It is informational only: the
 phone continues to Android by itself after a few seconds (or long-press power to skip). You

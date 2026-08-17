@@ -10,7 +10,7 @@ Everything here assumes you have the Step 4 backup. If you do not, stop and make
 4. In recovery choose **Emergency download mode** (highlighted below).
 5. Verify on the host: USB device `05c6:9008` present.
 
-![Stock recovery with Emergency download mode selected](images/recovery-edl.jpg)
+<img src="images/recovery-edl.jpg" width="420" alt="Stock recovery with Emergency download mode selected">
 
 ## Restore a single partition (example: unroot)
 
