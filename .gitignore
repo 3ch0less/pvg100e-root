@@ -1,0 +1,21 @@
+# Never commit device dumps or binaries. The backup contains IMEI, serial,
+# calibration data and lock credentials. Keep it local, always.
+backup/
+backup*/
+*.bin
+*.img
+*.mbn
+*.elf
+
+# Tooling and local state
+edl/
+venv/
+__pycache__/
+*.pyc
+logs/
+*.log
+
+# Downloaded artifacts (link them in the docs instead)
+Magisk*.apk
+hosts
+.DS_Store

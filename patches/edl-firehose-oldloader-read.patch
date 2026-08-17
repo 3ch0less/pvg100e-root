@@ -1,0 +1,212 @@
+diff --git a/edlclient/Library/firehose.py b/edlclient/Library/firehose.py
+index fc55169..834c61f 100755
+--- a/edlclient/Library/firehose.py
++++ b/edlclient/Library/firehose.py
+@@ -670,50 +670,73 @@ class firehose(metaclass=LogBase):
+                f" start_sector=\"{start_sector}\""
+         data += self.nand_pages_attr() + "/>\n</data>"
+ 
+-        rsp = self.xmlsend(data, self.skipresponse)
++        # This loader (old-style firehose) streams raw payload immediately after
++        # the read command, before any XML response. xmlsend() would consume
++        # payload bytes while waiting for "<response value", so send the command
++        # directly and do a byte-counted raw read instead.
++        self.cdc.flush()
+         self.cdc.xmlread = False
++        self.cdc.write(bytes(data, 'utf-8')[:self.cfg.MaxXMLSizeInBytes])
+         time.sleep(0.01)
+-        if not rsp.resp:
+-            if display:
+-                self.error(rsp.error)
+-            return b""
+-        else:
+-            bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+-            total = bytestoread
+-            show_progress = progbar.show_progress
+-            usb_read = self.cdc.read
+-            progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
+-            worker = Thread(target=writedata, args=(filename, self.rq), daemon=True)
+-            worker.start()
+-            while bytestoread > 0:
+-                if self.cdc.is_serial:
+-                    maxsize = self.cfg.MaxPayloadSizeFromTargetInBytes
+-                else:
+-                    maxsize = 5 * 1024 * 1024
+-                size = min(maxsize, bytestoread)
+-                data = usb_read(size)
+-                if len(data) > 0:
+-                    self.rq.put(data)
+-                    bytestoread -= len(data)
+-                    show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
+-            self.rq.put(None)
+-            worker.join(60)
+-            self.cdc.xmlread = True
+-            wd = self.wait_for_data()
+-            info = self.xml.getlog(wd)
+-            rsp = self.xml.getresponse(wd)
+-            if "value" in rsp:
+-                if rsp["value"] != "ACK":
+-                    if bytestoread != 0:
+-                        self.error(f"Error:")
+-                        for line in info:
+-                            self.error(line)
+-                            self.lasterror += bytes(line + "\n", "utf-8")
++        bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
++        total = bytestoread
++        show_progress = progbar.show_progress
++        usb_read = self.cdc.read
++        progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
++        worker = Thread(target=writedata, args=(filename, self.rq), daemon=True)
++        worker.start()
++        empty_reads = 0
++        while bytestoread > 0:
++            if self.cdc.is_serial:
++                maxsize = self.cfg.MaxPayloadSizeFromTargetInBytes
++            else:
++                maxsize = 5 * 1024 * 1024
++            size = min(maxsize, bytestoread)
++            data = usb_read(size)
++            if len(data) > 0:
++                if bytestoread == total and data.lstrip()[:5] == b"<?xml":
++                    # No payload: command was rejected outright (NAK trailer).
++                    self.rq.put(None)
++                    worker.join(60)
++                    self.cdc.xmlread = True
++                    wd = data + self.wait_for_data()
++                    for line in self.xml.getlog(wd):
++                        self.error(line)
++                    self.error("Read command rejected by loader")
++                    if os.path.exists(filename):
++                        os.remove(filename)
+                     return False
++                empty_reads = 0
++                self.rq.put(data)
++                bytestoread -= len(data)
++                show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
+             else:
+-                if display:
+-                    self.error(f"Error:{rsp[2]}")
++                empty_reads += 1
++                if empty_reads > 200:
++                    self.rq.put(None)
++                    worker.join(60)
++                    self.error("Read stalled: no data from device")
++                    if os.path.exists(filename):
++                        os.remove(filename)
+                     return False
++        self.rq.put(None)
++        worker.join(60)
++        self.cdc.xmlread = True
++        wd = self.wait_for_data()
++        info = self.xml.getlog(wd)
++        rsp = self.xml.getresponse(wd)
++        if "value" in rsp:
++            if rsp["value"] != "ACK":
++                if bytestoread != 0:
++                    self.error(f"Error:")
++                    for line in info:
++                        self.error(line)
++                    self.lasterror += bytes(line + "\n", "utf-8")
++                return False
++        else:
++            if display:
++                self.error(f"Error:{rsp[2]}")
++                return False
+         return True
+ 
+     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+@@ -732,51 +755,52 @@ class firehose(metaclass=LogBase):
+         data += self.nand_pages_attr() + "/>\n</data>"
+ 
+         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
+-        rsp = self.xmlsend(data, self.skipresponse)
+-        if "value" in rsp.data and rsp.data["value"] == "NAK":
+-            return rsp
++        # This loader (old-style firehose) streams raw payload immediately after
++        # the read command, before any XML response (see cmd_read). xmlsend()
++        # would consume payload bytes, so send the command directly and do a
++        # byte-counted raw read instead.
++        self.cdc.flush()
+         self.cdc.xmlread = False
++        self.cdc.write(bytes(data, 'utf-8')[:self.cfg.MaxXMLSizeInBytes])
++        bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
++        total = bytestoread
+         resData = bytearray()
+-        if not rsp.resp:
+-            if display:
+-                self.error(rsp.error)
+-            return rsp
+-        else:
+-            bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+-            total = bytestoread
++        if display:
++            progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
++        empty_reads = 0
++        while bytestoread > 0:
++            tmp = self.cdc.read(min(self.cdc.maxsize, bytestoread))
++            if tmp == b"":
++                empty_reads += 1
++                if empty_reads > 200:
++                    self.error("Read stalled: no data from device")
++                    return response(resp=False, data=resData, error="stalled")
++                continue
++            if bytestoread == total and tmp.lstrip()[:5] == b"<?xml":
++                # No payload: command was rejected outright (NAK trailer).
++                self.cdc.xmlread = True
++                wd = tmp + self.wait_for_data()
++                info = self.xml.getlog(wd)
++                return response(resp=False, data=resData, error=info)
++            empty_reads = 0
++            size = len(tmp)
++            bytestoread -= size
++            resData.extend(tmp)
++            progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
++        self.cdc.xmlread = True
++        wd = self.wait_for_data()
++        info = self.xml.getlog(wd)
++        rsp = self.xml.getresponse(wd)
++        if "value" in rsp:
++            if rsp["value"] != "ACK":
++                self.error(f"Error:")
++                for line in info:
++                    self.error(line)
++                return response(resp=False, data=resData, error=info)
+             if display:
+-                progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
+-            while bytestoread > 0:
+-                tmp = self.cdc.read(min(self.cdc.maxsize, bytestoread))
+-                size = len(tmp)
+-                bytestoread -= size
+-                resData.extend(tmp)
+-                progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
+-            self.cdc.xmlread = True
+-            wd = self.wait_for_data()
+-            info = self.xml.getlog(wd)
+-            rsp = self.xml.getresponse(wd)
+-            if "value" in rsp:
+-                if rsp["value"] != "ACK":
+-                    self.error(f"Error:")
+-                    for line in info:
+-                        self.error(line)
+-                    return response(resp=False, data=resData, error=info)
+-                elif "rawmode" in rsp:
+-                    if rsp["rawmode"] == "false":
+-                        return response(resp=True, data=resData)
+-            else:
+-                if len(rsp) > 1:
+-                    if b"Failed to open the UFS Device" in rsp[2]:
+-                        self.error(f"Error:{rsp[2]}")
+-                    self.lasterror = rsp[2]
+-                return response(resp=False, data=resData, error=rsp[2])
+-        if rsp["value"] != "ACK":
+-            self.lasterror = rsp[2]
+-        if display and prog != 100:
+-            progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
+-        resp = rsp["value"] == "ACK"
+-        return response(resp=resp, data=resData, error=rsp[2])  # Do not remove, needed for oneplus
++                progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
++            return response(resp=True, data=resData)
++        return response(resp=False, data=resData, error=rsp)
+ 
+     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, start_sector=1):
+         try:
